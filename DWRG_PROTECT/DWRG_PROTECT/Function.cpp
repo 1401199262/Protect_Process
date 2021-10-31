@@ -446,7 +446,7 @@ PHANDLE_TABLE_ENTRY ExpLookupHandleTableEntry(IN PHANDLE_TABLE HandleTable, IN E
     return Entry;
 }
 
-//Ö¸¶¨½ø³ÌÀïËùÓĞÖ¸ÏòÄ¿±êPIDµÄ¾ä±úÈ«²¿½µÈ¨ 
+//æŒ‡å®šè¿›ç¨‹é‡Œæ‰€æœ‰æŒ‡å‘ç›®æ ‡PIDçš„å¥æŸ„å…¨éƒ¨é™æƒ 
 NTSTATUS ChangeHandleAccessState(ULONG ulProcessId, ULONG ulProtectPid)
 {
 
@@ -498,7 +498,7 @@ NTSTATUS ChangeHandleAccessState(ULONG ulProcessId, ULONG ulProtectPid)
         //    //wcscpy(Buffer->szTypeName, *(PCWSTR*)((PUCHAR)ObjectType + 0x18));
         //    //Buffer->Handle = (HANDLE)Handle;
         //    //Buffer->AccessMask = Entry->GrantedAccessBits;
-        //    //Buffer->Address = Object;//¾ä±úÖ¸ÏòµÄµØÖ·
+        //    //Buffer->Address = Object;//å¥æŸ„æŒ‡å‘çš„åœ°å€
         //    //Buffer++;
 
         if ((DWORD64)Object == (DWORD64)ProtectEProcess)
@@ -544,7 +544,7 @@ VOID SearchAndReduceAccessState(ULONG ulProtectPid)
         DPRINT("%s: dynData.ObjTable = 0\n",__FUNCTION__);
 
 
-    //Õâ¸öº¯ÊıÅªÁË°ë¸öÔÂ =_=
+    //è¿™ä¸ªå‡½æ•°å¼„äº†åŠä¸ªæœˆ =_=
     NTSTATUS status;
     ULONG Retlength;
     PVOID Buffer = NULL;
@@ -812,14 +812,14 @@ NTSTATUS EmptyDebugPort(ULONG ulPid)
     PEPROCESS pepro;
     if (NT_SUCCESS(PsLookupProcessByProcessId((HANDLE)ulPid, &pepro)))
     {
-        //*(ULONG*)((DWORD64)pepro + dynData.Protection) = 0x40000051;//ÉèÖÃÎªr3²»¿É·ÃÎÊ
+        //*(ULONG*)((DWORD64)pepro + dynData.Protection) = 0x40000051;//è®¾ç½®ä¸ºr3ä¸å¯è®¿é—®
 
         __try
         {
             if (*(DWORD64*)((DWORD64)pepro + dynData.DebugPort) != 0)
             {
-                //ÓĞÈËÔÚµ÷ÊÔ!!!
-                //memset(pepro, 0, 0x10000);//Ö±½ÓÀ¶ÆÁ
+                //æœ‰äººåœ¨è°ƒè¯•!!!
+                //memset(pepro, 0, 0x10000);//ç›´æ¥è“å±
 
                 *(DWORD64*)((DWORD64)pepro + dynData.DebugPort) = 0i64;
             }
@@ -850,7 +850,7 @@ NTSTATUS SetForbiddenAccess(ULONG ulPid)
     {
         __try
         {
-            *(ULONG*)((DWORD64)pepro + dynData.Protection) = 0x40000051;//ÉèÖÃÎªr3²»¿É·ÃÎÊ
+            *(ULONG*)((DWORD64)pepro + dynData.Protection) = 0x40000051;//è®¾ç½®ä¸ºr3ä¸å¯è®¿é—®
         }
         __except (1)
         {
@@ -876,7 +876,7 @@ NTSTATUS UnSetForbiddenAccess(ULONG ulPid)
     {
         __try
         {
-            *(ULONG*)((DWORD64)pepro + dynData.Protection) = 0x40000000;//ÉèÖÃÎªr3¿É·ÃÎÊ
+            *(ULONG*)((DWORD64)pepro + dynData.Protection) = 0x40000000;//è®¾ç½®ä¸ºr3å¯è®¿é—®
         }
         __except (1)
         {
@@ -997,7 +997,7 @@ void UninstallObHook()
 }
 
 
-NTSTATUS SetProcessID(ULONG origPID, ULONG SetPID) {//ÓÃPsLookupProcessByProcessId»áµ¼ÖÂ¸Ä²»»ØÀ´
+NTSTATUS SetProcessID(ULONG origPID, ULONG SetPID) {//ç”¨PsLookupProcessByProcessIdä¼šå¯¼è‡´æ”¹ä¸å›æ¥
     PEPROCESS pCurProcess = NULL;
     ULONG CurPID = 0;
     
@@ -1021,31 +1021,29 @@ NTSTATUS SetProcessID(ULONG origPID, ULONG SetPID) {//ÓÃPsLookupProcessByProcess
 
 
 NTSTATUS HideProcess_BreakChain_NonPG(ULONG ulPID) {
-    PEPROCESS pCurProcess = NULL;
-    ULONG CurPID = 0;
+//     PEPROCESS pCurProcess = NULL;
+//     ULONG CurPID = 0;
 
-    pCurProcess = PsGetCurrentProcess();//system process
-    PLIST_ENTRY pActiveProcessLinks = (PLIST_ENTRY)((DWORD_PTR)pCurProcess + dynData.ActiveProcessLink);
-    PLIST_ENTRY pNextLinks = pActiveProcessLinks->Flink;
-    while (pNextLinks->Flink != pActiveProcessLinks->Flink)
-    {
-        //DbgPrint("Founding...\n");
-        pCurProcess = (PEPROCESS)((DWORD_PTR)pNextLinks - dynData.ActiveProcessLink);
-        CurPID = *(ULONG*)((DWORD_PTR)pCurProcess + dynData.UniquePId);//µÃµ½µ±Ç°pid
-        if (CurPID == ulPID) {
+//     pCurProcess = PsGetCurrentProcess();//system process
+//     PLIST_ENTRY pActiveProcessLinks = (PLIST_ENTRY)((DWORD_PTR)pCurProcess + dynData.ActiveProcessLink);
+//     PLIST_ENTRY pNextLinks = pActiveProcessLinks->Flink;
+//     while (pNextLinks->Flink != pActiveProcessLinks->Flink)
+//     {
+//         //DbgPrint("Founding...\n");
+//         pCurProcess = (PEPROCESS)((DWORD_PTR)pNextLinks - dynData.ActiveProcessLink);
+//         CurPID = *(ULONG*)((DWORD_PTR)pCurProcess + dynData.UniquePId);//å¾—åˆ°å½“å‰pid
+//         if (CurPID == ulPID) {
             
-            pNextLinks->Flink->Blink = pNextLinks->Blink;
-            pNextLinks->Blink->Flink = pNextLinks->Flink;
+//             pNextLinks->Flink->Blink = pNextLinks->Blink;
+//             pNextLinks->Blink->Flink = pNextLinks->Flink;
 
-            pNextLinks->Flink = pNextLinks;
-            pNextLinks->Blink = pNextLinks;
-            //DbgPrint("Found and Delete Chain\n");
-            return STATUS_SUCCESS;
-        }
-        pNextLinks = pNextLinks->Flink;
-    }
-    //DbgPrint("Pid Not Found\n");
-    return STATUS_NOT_FOUND;
+//             //DbgPrint("Found and Delete Chain\n");
+//             return STATUS_SUCCESS;
+//         }
+//         pNextLinks = pNextLinks->Flink;
+//     }
+//     //DbgPrint("Pid Not Found\n");
+//     return STATUS_NOT_FOUND;
 }
 
 #pragma region Unused_Func
@@ -1171,7 +1169,7 @@ NTSTATUS HideProcess_BreakChain_NonPG(ULONG ulPID) {
 //    return result;
 //}
 //
-////¸Ä¾ä±úÈ¨ÏŞ
+////æ”¹å¥æŸ„æƒé™
 //NTSTATUS ChangeAccessState(IN PHANDLE_GRANT_ACCESS pAccess)
 //{
 //    NTSTATUS status = STATUS_SUCCESS;
