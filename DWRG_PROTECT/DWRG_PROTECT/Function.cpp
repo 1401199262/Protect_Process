@@ -134,6 +134,8 @@ NTSTATUS BBInitDynamicData(IN OUT PDYNAMIC_DATA pData)
             // Windows 7 SP1
         case WINVER_7:
         case WINVER_7_SP1:
+            pData->ProcessListEntry = 0xe0;
+
             pData->KExecOpt = 0x0D2;
             pData->UniquePId = 0x180;
             pData->ActiveProcessLink = pData->UniquePId + 0x8;
@@ -153,6 +155,7 @@ NTSTATUS BBInitDynamicData(IN OUT PDYNAMIC_DATA pData)
 
             // Windows 8
         case WINVER_8:
+            pData->ProcessListEntry = 0x238;
             pData->DebugPort = 0x410;
             pData->KExecOpt = 0x1B7;
             pData->KExecOpt = 0x1BF;
@@ -172,6 +175,7 @@ NTSTATUS BBInitDynamicData(IN OUT PDYNAMIC_DATA pData)
 
             // Windows 8.1
         case WINVER_81:
+            pData->ProcessListEntry = 0x238;
             pData->DebugPort = 0x410;
             pData->KExecOpt = 0x1B7;
             pData->KExecOpt = 0x1BF;
@@ -193,6 +197,7 @@ NTSTATUS BBInitDynamicData(IN OUT PDYNAMIC_DATA pData)
         case WINVER_10:
             if (verInfo.dwBuildNumber == 10586)
             {
+                pData->ProcessListEntry = 0x240;
                 pData->KExecOpt = 0x1BF;
                 pData->UniquePId = 0x2e8;
                 pData->ActiveProcessLink = pData->UniquePId + 0x8;
@@ -210,6 +215,7 @@ NTSTATUS BBInitDynamicData(IN OUT PDYNAMIC_DATA pData)
             }
             else if (verInfo.dwBuildNumber == 14393)
             {
+                pData->ProcessListEntry = 0x240;
                 pData->ver = WINVER_10_RS1;
                 pData->KExecOpt = 0x1BF;
                 pData->UniquePId = 0x2e8;
@@ -228,6 +234,7 @@ NTSTATUS BBInitDynamicData(IN OUT PDYNAMIC_DATA pData)
             }
             else if (verInfo.dwBuildNumber == 15063)
             {
+                pData->ProcessListEntry = 0x240;
                 pData->ver = WINVER_10_RS2;
                 pData->KExecOpt = 0x1BF;
                 pData->UniquePId = 0x2e0;
@@ -246,6 +253,7 @@ NTSTATUS BBInitDynamicData(IN OUT PDYNAMIC_DATA pData)
             }
             else if (verInfo.dwBuildNumber == 16299)
             {
+                pData->ProcessListEntry = 0x240;
                 pData->ver = WINVER_10_RS3;
                 pData->KExecOpt = 0x1BF;
                 pData->UniquePId = 0x2e0;
@@ -264,6 +272,7 @@ NTSTATUS BBInitDynamicData(IN OUT PDYNAMIC_DATA pData)
             }
             else if (verInfo.dwBuildNumber == 17134)
             {
+                pData->ProcessListEntry = 0x240;
                 pData->ver = WINVER_10_RS4;
                 pData->KExecOpt = 0x1BF;
                 pData->UniquePId = 0x2e0;
@@ -282,6 +291,7 @@ NTSTATUS BBInitDynamicData(IN OUT PDYNAMIC_DATA pData)
             }
             else if (verInfo.dwBuildNumber == 17763)
             {
+                pData->ProcessListEntry = 0x240;
                 pData->ver = WINVER_10_RS5;
                 pData->KExecOpt = 0x1BF;
                 pData->UniquePId = 0x2e0;
@@ -300,6 +310,8 @@ NTSTATUS BBInitDynamicData(IN OUT PDYNAMIC_DATA pData)
             }
             else if (verInfo.dwBuildNumber == 18362 || verInfo.dwBuildNumber == 18363)
             {
+                pData->ProcessListEntry = 0x248;
+
                 pData->ver = verInfo.dwBuildNumber == 18362 ? WINVER_10_19H1 : WINVER_10_19H2;
                 pData->KExecOpt = 0x1C3;
                 pData->UniquePId = 0x2e8;
@@ -321,6 +333,7 @@ NTSTATUS BBInitDynamicData(IN OUT PDYNAMIC_DATA pData)
                 pData->ver = verInfo.dwBuildNumber >= 22000 ? WINVER_11_21H2 : WINVER_10_20H1;
                 // KP
                 pData->KExecOpt = 0x283;
+                pData->ProcessListEntry = 0x350;
                 // EP
                 pData->UniquePId = 0x440;
                 pData->ActiveProcessLink = pData->UniquePId + 0x8;
@@ -574,231 +587,6 @@ VOID SearchAndReduceAccessState(ULONG ulProtectPid)
 }
 
 
-TABLE_SEARCH_RESULT MiFindNodeOrParent(IN PMM_AVL_TABLE Table,IN ULONG_PTR StartingVpn,OUT PMMADDRESS_NODE* NodeOrParent)
-
-/*++
-
-    Routine Description:
-
-        This routine is used by all of the routines of the generic
-        table package to locate the a node in the tree.  It will
-        find and return (via the NodeOrParent parameter) the node
-        with the given key, or if that node is not in the tree it
-        will return (via the NodeOrParent parameter) a pointer to
-        the parent.
-
-    Arguments:
-
-        Table - The generic table to search for the key.
-
-        StartingVpn - The starting virtual page number.
-
-        NodeOrParent - Will be set to point to the node containing the
-        the key or what should be the parent of the node
-        if it were in the tree.  Note that this will *NOT*
-        be set if the search result is TableEmptyTree.
-
-    Return Value:
-
-        TABLE_SEARCH_RESULT - TableEmptyTree: The tree was empty.  NodeOrParent
-        is *not* altered.
-
-        TableFoundNode: A node with the key is in the tree.
-        NodeOrParent points to that node.
-
-        TableInsertAsLeft: Node with key was not found.
-        NodeOrParent points to what would
-        be parent.  The node would be the
-        left child.
-
-        TableInsertAsRight: Node with key was not found.
-        NodeOrParent points to what would
-        be parent.  The node would be
-        the right child.
-
-    Environment:
-
-        Kernel mode.  The PFN lock is held for some of the tables.
-
---*/
-
-{
-    PMMADDRESS_NODE Child;
-    PMMADDRESS_NODE NodeToExamine;
-    PMMVAD_SHORT    VpnCompare;
-    ULONG_PTR       startVpn;
-    ULONG_PTR       endVpn;
-
-    if (Table->NumberGenericTableElements == 0) {
-        return TableEmptyTree;
-    }
-
-    NodeToExamine = (PMMADDRESS_NODE)GET_VAD_ROOT(Table);
-
-    for (;;) {
-
-        VpnCompare = (PMMVAD_SHORT)NodeToExamine;
-        startVpn = VpnCompare->StartingVpn;
-        endVpn = VpnCompare->EndingVpn;
-
-#if defined( _WIN81_ ) || defined( _WIN10_ )
-        startVpn |= (ULONG_PTR)VpnCompare->StartingVpnHigh << 32;
-        endVpn |= (ULONG_PTR)VpnCompare->EndingVpnHigh << 32;
-#endif  
-
-        //
-        // Compare the buffer with the key in the tree element.
-        //
-
-        if (StartingVpn < startVpn) {
-
-            Child = NodeToExamine->LeftChild;
-
-            if (Child != NULL) {
-                NodeToExamine = Child;
-            }
-            else {
-
-                //
-                // Node is not in the tree.  Set the output
-                // parameter to point to what would be its
-                // parent and return which child it would be.
-                //
-
-                *NodeOrParent = NodeToExamine;
-                return TableInsertAsLeft;
-            }
-        }
-        else if (StartingVpn <= endVpn) {
-
-            //
-            // This is the node.
-            //
-
-            *NodeOrParent = NodeToExamine;
-            return TableFoundNode;
-        }
-        else {
-
-            Child = NodeToExamine->RightChild;
-
-            if (Child != NULL) {
-                NodeToExamine = Child;
-            }
-            else {
-
-                //
-                // Node is not in the tree.  Set the output
-                // parameter to point to what would be its
-                // parent and return which child it would be.
-                //
-
-                *NodeOrParent = NodeToExamine;
-                return TableInsertAsRight;
-            }
-        }
-
-    };
-}
-
-/// <summary>
-/// Find VAD that describes target address
-/// </summary>
-/// <param name="pProcess">Target process object</param>
-/// <param name="address">Address to find</param>
-/// <param name="pResult">Found VAD. NULL if not found</param>
-/// <returns>Status code</returns>
-NTSTATUS BBFindVAD(IN PEPROCESS pProcess, IN ULONG_PTR address, OUT PMMVAD_SHORT* pResult)
-{
-    NTSTATUS status = STATUS_SUCCESS;
-    ULONG_PTR vpnStart = address >> PAGE_SHIFT;
-
-    ASSERT(pProcess != NULL && pResult != NULL);
-    if (pProcess == NULL || pResult == NULL)
-        return STATUS_INVALID_PARAMETER;
-
-    if (dynData.VadRoot == 0)
-    {
-        DPRINT("%s: Invalid VadRoot offset\n", __FUNCTION__);
-        status = STATUS_INVALID_ADDRESS;
-    }
-
-
-    PMM_AVL_TABLE pTable = (PMM_AVL_TABLE)((PUCHAR)pProcess + dynData.VadRoot);
-    PMM_AVL_NODE pNode = GET_VAD_ROOT(pTable);
-
-    // Search VAD
-    if (MiFindNodeOrParent(pTable, vpnStart, &pNode) == TableFoundNode)
-    {
-        *pResult = (PMMVAD_SHORT)pNode;
-    }
-    else
-    {
-        DPRINT("%s: VAD entry for address 0x%p not found\n", __FUNCTION__, address);
-        status = STATUS_NOT_FOUND;
-    }
-
-    return status;
-}
-
-/// <summary>
-/// Hide memory from NtQueryVirtualMemory
-/// </summary>
-/// <param name="pProcess">Target process object</param>
-/// <param name="address">Target address</param>
-/// <returns>Status code</returns>
-NTSTATUS BBUnlinkVAD(IN PEPROCESS pProcess, IN ULONG_PTR address)
-{
-    NTSTATUS status = STATUS_SUCCESS;
-    PMMVAD_SHORT pVadShort = NULL;
-
-    status = BBFindVAD(pProcess, address, &pVadShort);
-    if (!NT_SUCCESS(status))
-        return status;
-
-    // Erase image name
-    if (pVadShort->u.VadFlags.VadType == VadImageMap)
-    {
-        PMMVAD pVadLong = (PMMVAD)pVadShort;
-        if (pVadLong->Subsection && pVadLong->Subsection->ControlArea && pVadLong->Subsection->ControlArea->FilePointer.Object)
-        {
-            PFILE_OBJECT pFile = (PFILE_OBJECT)(pVadLong->Subsection->ControlArea->FilePointer.Value & ~0xF);
-            pFile->FileName.Buffer[0] = L'\0';
-            pFile->FileName.Length = 0;
-        }
-        else
-            return STATUS_INVALID_ADDRESS;
-    }
-    // Make NO_ACCESS
-    else if (pVadShort->u.VadFlags.VadType == VadDevicePhysicalMemory)
-    {
-        pVadShort->u.VadFlags.Protection = MM_ZERO_ACCESS;
-    }
-    // Invalid VAD type
-    else
-        status = STATUS_INVALID_PARAMETER;
-
-    return status;
-}
-
-NTSTATUS HideVAD(IN PHIDE_VAD pData)
-{
-    DPRINT("Base:%llX size:%llX\n", (ULONGLONG)pData->base, (ULONGLONG)pData->size);
-    NTSTATUS status = STATUS_SUCCESS;
-    PEPROCESS pProcess = NULL;
-
-    status = PsLookupProcessByProcessId((HANDLE)pData->pid, &pProcess);
-    if (NT_SUCCESS(status))
-        status = BBUnlinkVAD(pProcess, (ULONGLONG)pData->base);
-    else
-        DPRINT("%s: PsLookupProcessByProcessId failed with status 0x%X\n", __FUNCTION__, status);
-
-    if (pProcess)
-        ObDereferenceObject(pProcess);
-
-    return status;
-}
-
 NTSTATUS EmptyDebugPort(ULONG ulPid)
 {
 
@@ -1019,210 +807,57 @@ NTSTATUS SetProcessID(ULONG origPID, ULONG SetPID) {//用PsLookupProcessByProces
     return STATUS_NOT_FOUND;
 }
 
+VOID UnLinkProcesssList(PEPROCESS PE) {
 
-NTSTATUS HideProcess_BreakChain_NonPG(ULONG ulPID) {
-//     PEPROCESS pCurProcess = NULL;
-//     ULONG CurPID = 0;
+    //ULONG KiProcessList = 0x240;
+    //ULONG ExitTimeOffset = 0;
 
-//     pCurProcess = PsGetCurrentProcess();//system process
-//     PLIST_ENTRY pActiveProcessLinks = (PLIST_ENTRY)((DWORD_PTR)pCurProcess + dynData.ActiveProcessLink);
-//     PLIST_ENTRY pNextLinks = pActiveProcessLinks->Flink;
-//     while (pNextLinks->Flink != pActiveProcessLinks->Flink)
-//     {
-//         //DbgPrint("Founding...\n");
-//         pCurProcess = (PEPROCESS)((DWORD_PTR)pNextLinks - dynData.ActiveProcessLink);
-//         CurPID = *(ULONG*)((DWORD_PTR)pCurProcess + dynData.UniquePId);//得到当前pid
-//         if (CurPID == ulPID) {
-            
-//             pNextLinks->Flink->Blink = pNextLinks->Blink;
-//             pNextLinks->Blink->Flink = pNextLinks->Flink;
 
-//             //DbgPrint("Found and Delete Chain\n");
-//             return STATUS_SUCCESS;
-//         }
-//         pNextLinks = pNextLinks->Flink;
-//     }
-//     //DbgPrint("Pid Not Found\n");
-//     return STATUS_NOT_FOUND;
+    LIST_ENTRY* ActiveProcessLink = (LIST_ENTRY*)((ULONG64)PE + dynData.ActiveProcessLink);
+    if (ActiveProcessLink->Blink != 0 && ActiveProcessLink->Flink != 0) {
+        ActiveProcessLink->Blink->Flink = ActiveProcessLink->Flink;
+        ActiveProcessLink->Flink->Blink = ActiveProcessLink->Blink;
+        ActiveProcessLink->Blink = 0;
+        ActiveProcessLink->Flink = 0;
+    }
+
+
+    //switch (Version.dwBuildNumber)
+    //{
+
+    //case 17134: KiProcessList = 0x0240; break;
+    //case 17763: KiProcessList = 0x0240; break;
+
+    //case 18362:KiProcessList = 0x0248; break;
+    //case 18363:KiProcessList = 0x0248; break;
+
+    //default:KiProcessList = 0x350; break;
+
+    //}
+
+    if (dynData.ProcessListEntry!= 0)
+    {
+        LIST_ENTRY* KiProcessListHead = (LIST_ENTRY*)((ULONG64)PE + dynData.ProcessListEntry);
+        if (KiProcessListHead->Blink != 0 && KiProcessListHead->Flink != 0) {
+            KiProcessListHead->Blink->Flink = KiProcessListHead->Flink;
+            KiProcessListHead->Flink->Blink = KiProcessListHead->Blink;
+            KiProcessListHead->Blink = 0;
+            KiProcessListHead->Flink = 0;
+        }
+    }
+
 }
 
-#pragma region Unused_Func
-//NTSTATUS ViewHandle(ULONG32 ProcessId)
-//{
-//    PEPROCESS EProcess = NULL;
-//    ULONG_PTR Handle = 0;
-//    PHANDLE_TABLE_ENTRY Entry = NULL;
-//    PVOID Object = NULL;
-//    POBJECT_TYPE ObjectType = NULL;
-//    PHANDLE_TABLE HandleTable = NULL;
-//
-//    if (!NT_SUCCESS(PsLookupProcessByProcessId((HANDLE)ProcessId, &EProcess)))
-//    {
-//        return STATUS_UNSUCCESSFUL;
-//    }
-//
-//    for (Handle = 0;; Handle += HANDLE_VALUE_INC)
-//    {
-//        Entry = ExpLookupHandleTableEntry(*(PHANDLE_TABLE*)((PUCHAR)EProcess + 0x418), *(PEXHANDLE)&Handle);
-//
-//        HandleTable = *(PHANDLE_TABLE*)((PUCHAR)EProcess + 0x418);
-//
-//
-//        if (Entry == NULL)
-//        {
-//            break;
-//        }
-//
-//        *(ULONG_PTR*)&Object = Entry->ObjectPointerBits;
-//        *(ULONG_PTR*)&Object <<= 4;
-//        if (Object == NULL)
-//        {
-//            continue;
-//        }
-//
-//        *(ULONG_PTR*)&Object |= 0xFFFF000000000000;
-//        *(ULONG_PTR*)&Object += 0x30;
-//        ObjectType = ObGetObjectType(Object);//Object=%llx, Entry=%llx, ObjectType=%llx\n======,Object, Entry, ObjectType
-//        DbgPrint("Addr=%llx, Entry=%llX, Handle=%llX, QuotaProcess=%llX, HandleTable=%llX\n ", Object, Entry, Handle, HandleTable->QuotaProcess, HandleTable);
-//        if (ObjectType == NULL)
-//        {
-//            continue;
-//        }
-//
-//
-//
-//        //if (wcscmp(*(PCWSTR*)((PUCHAR)ObjectType + 0x18), L"Process") == 0)
-//        //{
-//        //	if (*(PULONG32)((PUCHAR)Object + 0x2E8) == PassiveId)
-//        //	{
-//        //		Entry->GrantedAccessBits = 0x1FFFFF;
-//        //		
-//        //	}
-//        //}
-//
-//
-//    }
-//
-//    ObDereferenceObject(EProcess);
-//
-//    return STATUS_SUCCESS;
-//}
-//
-//void EumProcessByQueyInformation()
-//{
-//
-//    NTSTATUS status;
-//    ULONG Retlength;
-//    PVOID Buffer = NULL;
-//    PSYSTEM_PROCESS_INFORMATION SystemProcess = NULL;
-//    status = ZwQuerySystemInformation(5, NULL, 0, &Retlength);
-//    if (status == STATUS_INFO_LENGTH_MISMATCH)
-//    {
-//
-//        Buffer = ExAllocatePool(PagedPool, Retlength);
-//        if (Buffer)
-//        {
-//            RtlZeroMemory(Buffer, Retlength);
-//            status = ZwQuerySystemInformation(5, Buffer, Retlength, &Retlength);
-//            if (NT_SUCCESS(status))
-//            {
-//                SystemProcess = (PSYSTEM_PROCESS_INFORMATION)Buffer;
-//                do {
-//                    DPRINT("%wZ\n", SystemProcess->ImageName);
-//                    SystemProcess = (PSYSTEM_PROCESS_INFORMATION)(((ULONG64)SystemProcess) + SystemProcess->NextEntryOffset);
-//                } while (SystemProcess->NextEntryOffset);
-//
-//
-//            }
-//            ExFreePool(Buffer);
-//        }
-//
-//    }
-//
-//}
-//BOOLEAN BBHandleCallback(IN PHANDLE_TABLE HandleTable, IN PHANDLE_TABLE_ENTRY HandleTableEntry, IN HANDLE Handle, IN PVOID EnumParameter)
-//{
-//    BOOLEAN result = FALSE;
-//    ASSERT(EnumParameter);
-//
-//    if (EnumParameter != NULL)
-//    {
-//        PHANDLE_GRANT_ACCESS pAccess = (PHANDLE_GRANT_ACCESS)EnumParameter;
-//        if (Handle == (HANDLE)pAccess->handle)
-//        {
-//            if (ExpIsValidObjectEntry(HandleTableEntry))
-//            {
-//                // Update access
-//                HandleTableEntry->GrantedAccessBits = pAccess->access;
-//                result = TRUE;
-//            }
-//            else
-//                DPRINT("%s: 0x%X:0x%X handle is invalid\n. HandleEntry = 0x%p", __FUNCTION__, pAccess->pid, pAccess->handle, HandleTableEntry);
-//        }
-//    }
-//
-//    // Release implicit locks
-//    _InterlockedExchangeAdd8((char*)&HandleTableEntry->VolatileLowValue, 1);  // Set Unlocked flag to 1
-//    if (HandleTable != NULL && HandleTable->HandleContentionEvent)
-//        ExfUnblockPushLock(&HandleTable->HandleContentionEvent, NULL);
-//
-//    return result;
-//}
-//
-////改句柄权限
-//NTSTATUS ChangeAccessState(IN PHANDLE_GRANT_ACCESS pAccess)
-//{
-//    NTSTATUS status = STATUS_SUCCESS;
-//    PEPROCESS pProcess = NULL;
-//
-//    // Validate dynamic offset
-//    if (dynData.ObjTable == 0)
-//    {
-//        DPRINT("%s: Invalid ObjTable address\n", __FUNCTION__);
-//        return STATUS_INVALID_ADDRESS;
-//    }
-//
-//    status = PsLookupProcessByProcessId((HANDLE)pAccess->pid, &pProcess);
-//
-//
-//    if (NT_SUCCESS(status))
-//    {
-//        PHANDLE_TABLE pTable = *(PHANDLE_TABLE*)((PUCHAR)pProcess + dynData.ObjTable);
-//        BOOLEAN found = ExEnumHandleTable(pTable, &BBHandleCallback, pAccess, NULL);
-//        if (found == FALSE)
-//            status = STATUS_NOT_FOUND;
-//    }
-//    else
-//        DPRINT("%s: PsLookupProcessByProcessId failed with status 0x%X\n", __FUNCTION__, status);
-//
-//    if (pProcess)
-//        ObDereferenceObject(pProcess);
-//
-//    return status;
-//}
-//
-//NTSTATUS HideProcess_BreakChain(ULONG ulPID) {
-//    PEPROCESS pCurProcess = NULL;
-//    ULONG CurPID = 0;
-//
-//    pCurProcess = PsGetCurrentProcess();//system process
-//    PLIST_ENTRY pActiveProcessLinks = (PLIST_ENTRY)((DWORD_PTR)pCurProcess + dynData.ActiveProcessLink);
-//    PLIST_ENTRY pNextLinks = pActiveProcessLinks->Flink;
-//    while (pNextLinks->Flink != pActiveProcessLinks->Flink)
-//    {
-//        //DbgPrint("Founding...\n");
-//        pCurProcess = (PEPROCESS)((DWORD_PTR)pNextLinks - dynData.ActiveProcessLink);
-//        CurPID = *(ULONG*)((DWORD_PTR)pCurProcess + dynData.UniquePId);
-//        if (CurPID == ulPID) {
-//            //*(ULONG*)((DWORD_PTR)pCurProcess + PIDOffset) += 123;
-//            pNextLinks->Flink->Blink = pNextLinks->Blink;
-//            pNextLinks->Blink->Flink = pNextLinks->Flink;
-//            //DbgPrint("Found and Delete Chain\n");
-//            return STATUS_SUCCESS;
-//        }
-//        pNextLinks = pNextLinks->Flink;
-//    }
-//    //DbgPrint("Pid Not Found\n");
-//    return STATUS_NOT_FOUND;
-//}
-#pragma endregion
+NTSTATUS HideProcess_BreakChain_NonPG(ULONG ulPID) {
+    PEPROCESS Eprocess;
+    if (NT_SUCCESS(PsLookupProcessByProcessId((HANDLE)ulPID, &Eprocess)))
+    {
+        UnLinkProcesssList(Eprocess);
+        *(UCHAR*)((ULONG64)Eprocess - 0x15) = 0x4;//防PG
+
+        return STATUS_SUCCESS;
+    }
+
+     return STATUS_NOT_FOUND;
+}
+
