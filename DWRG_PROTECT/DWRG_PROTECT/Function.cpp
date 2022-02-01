@@ -27,7 +27,7 @@ NTSTATUS BBGetBuildNO(OUT PULONG pBuildNo)
     if (NT_SUCCESS(status))
     {
         PKEY_VALUE_FULL_INFORMATION pValueInfo = (PKEY_VALUE_FULL_INFORMATION)ExAllocatePoolWithTag(PagedPool, PAGE_SIZE, BB_POOL_TAG);
-        ULONG bytes = 0;
+        ULONG bytes = 0;//
 
         if (pValueInfo)
         {
