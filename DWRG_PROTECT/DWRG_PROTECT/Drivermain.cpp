@@ -2,9 +2,9 @@
 
 #include "PipiDef.h"
 #define DEVICE_NAME  L"\\Device\\SecureSys"
-//Éè±¸ÓëÉè±¸Ö®¼äÍ¨ÐÅ
+//è®¾å¤‡ä¸Žè®¾å¤‡ä¹‹é—´é€šä¿¡
 #define DEVICE_LINK_NAME    L"\\DosDevices\\SecureSysLink"
-//Éè±¸ÓëRing3Ö®¼äÍ¨ÐÅ link ºÍname ²»ÄÜÒ»Ñù!!!(À¶ÆÁ)
+//è®¾å¤‡ä¸ŽRing3ä¹‹é—´é€šä¿¡ link å’Œname ä¸èƒ½ä¸€æ ·!!!(è“å±)
 
 #define Pipi_RegisterCallBack		CTL_CODE(FILE_DEVICE_UNKNOWN,0x800,METHOD_BUFFERED,FILE_ANY_ACCESS)
 #define Pipi_EscapeFromDebugger		CTL_CODE(FILE_DEVICE_UNKNOWN,0x801,METHOD_BUFFERED,FILE_ANY_ACCESS)
@@ -30,7 +30,7 @@ PETHREAD pEThread_EmptyDebugPortThr;// , pEThread_ChangeAccessState;
 
 
 
-//TODO ¿ÉÄÜ²»ÐèÒªÐ´³ÉÏß³Ì
+//TODO å¯èƒ½ä¸éœ€è¦å†™æˆçº¿ç¨‹
 //VOID EmptyDebugPortThr(PVOID lparam)
 //{
 //    LARGE_INTEGER timeout;
@@ -70,12 +70,12 @@ PETHREAD pEThread_EmptyDebugPortThr;// , pEThread_ChangeAccessState;
 
 
 
-//ÅÉÇ²Àú³Ì
+//æ´¾é£åŽ†ç¨‹
 NTSTATUS PassThroughDispatch(PDEVICE_OBJECT  DeviceObject, PIRP Irp)
 {
     Irp->IoStatus.Status = STATUS_SUCCESS;     //LastError()
     Irp->IoStatus.Information = 0;             //ReturnLength
-    IoCompleteRequest(Irp, IO_NO_INCREMENT);   //½«Irp·µ»Ø¸øIo¹ÜÀíÆ÷
+    IoCompleteRequest(Irp, IO_NO_INCREMENT);   //å°†Irpè¿”å›žç»™Ioç®¡ç†å™¨
     return STATUS_SUCCESS;
 }
 NTSTATUS ControlThroughDispatch(PDEVICE_OBJECT DeviceObject, PIRP Irp)
@@ -115,7 +115,7 @@ NTSTATUS ControlThroughDispatch(PDEVICE_OBJECT DeviceObject, PIRP Irp)
                             }
                             __except (1)
                             {
-                                DPRINT("¸³ÖµProtectProcessPidÊ§°Ü Line=%d", __LINE__);
+                                DPRINT("èµ‹å€¼ProtectProcessPidå¤±è´¥ Line=%d", __LINE__);
                                 Irp->IoStatus.Status = STATUS_UNSUCCESSFUL;
                                 break;
                             }
@@ -143,7 +143,7 @@ NTSTATUS ControlThroughDispatch(PDEVICE_OBJECT DeviceObject, PIRP Irp)
                     {
                         if (inputBufferLength >= sizeof(HIDE_VAD) && ioBuffer)
                         {
-                            HideVAD((PHIDE_VAD)ioBuffer);
+                            //HideVAD((PHIDE_VAD)ioBuffer);
                             Irp->IoStatus.Status = STATUS_SUCCESS;
                         }
                         else {
