@@ -328,7 +328,7 @@ NTSTATUS BBInitDynamicData(IN OUT PDYNAMIC_DATA pData)
                 pData->MiAllocPage = 0;
                 break;
             }
-            else if (verInfo.dwBuildNumber == 19041 || verInfo.dwBuildNumber == 19042 || verInfo.dwBuildNumber == 19043 || (verInfo.dwBuildNumber >= 22000 && verInfo.dwBuildNumber <= 22483))
+            else if (verInfo.dwBuildNumber == 19041 || verInfo.dwBuildNumber == 19042 || verInfo.dwBuildNumber == 19043 || verInfo.dwBuildNumber == 19044 || (verInfo.dwBuildNumber >= 22000 && verInfo.dwBuildNumber <= 22483))
             {
                 pData->ver = verInfo.dwBuildNumber >= 22000 ? WINVER_11_21H2 : WINVER_10_20H1;
                 // KP
